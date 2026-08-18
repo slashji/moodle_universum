@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: universum
       POSTGRES_DB: moodle_universum
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,7 +27,9 @@ services:
     environment:
       NODE_ENV: development
       PORT: 4000
-      CORS_ORIGIN: http://localhost:5173
+      # Same-origin via Caddy makes CORS moot for the public domain, but keep
+      # localhost allowed too for direct-to-backend debugging.
+      CORS_ORIGIN: http://localhost:5173,https://${DOMAIN:-localhost}
       DATABASE_URL: postgresql://universum:universum@postgres:5432/moodle_universum
       MOODLE_PROVIDER: mock
       MOODLE_BASE_URL: ${MOODLE_BASE_URL:-}
@@ -36,7 +38,10 @@ services:
       AUTH_MODE: dev
       DEV_DEFAULT_ROLE: student
     ports:
-      - "4000:4000"
+      # Bound to localhost only — publicly reachable traffic goes through
+      # the caddy service instead. Use `ssh -L 4000:localhost:4000 ...` to
+      # reach this remotely for debugging.
+      - "127.0.0.1:4000:4000"
     volumes:
       - ./backend/src:/app/backend/src
       - ./backend/prisma:/app/backend/prisma
@@ -50,13 +55,36 @@ services:
     depends_on:
       - backend
     environment:
-      VITE_API_BASE_URL: http://localhost:4000/api
+      # Read by vite.config.ts to populate server.allowedHosts.
+      DOMAIN: ${DOMAIN:-}
+      # Relative path: Caddy proxies /api/* to the backend under the same
+      # origin as the frontend, so no absolute URL or CORS is needed for
+      # traffic that comes in through the domain.
+      VITE_API_BASE_URL: /api
       VITE_MOODLE_BASE_URL: ${MOODLE_BASE_URL:-https://moodle.example.org}
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./shared/src:/app/shared/src
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env, e.g. universum.timopuistaja.eu}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
 volumes:
   postgres_data:
+  caddy_data:
+  caddy_config:

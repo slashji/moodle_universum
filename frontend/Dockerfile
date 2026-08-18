@@ -1,6 +1,7 @@
 # Development-oriented image: runs the Vite dev server. Build context is
 # the monorepo root so this image can see the shared/ workspace package.
-FROM node:20-alpine
+# Debian slim, to match backend/Dockerfile and avoid Alpine/musl gotchas.
+FROM node:20-slim
 
 WORKDIR /app
 

@@ -11,7 +11,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.corsOrigin,
+    origin: env.corsOrigins,
     credentials: true,
   })
 );
@@ -19,6 +19,16 @@ app.use(express.json({ limit: "1mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", moodleProvider: env.moodleProvider });
+});
+
+app.get("/", (_req, res) => {
+  res.json({
+    name: "moodle-universum backend",
+    message: "This is the API server, not the app. Open the frontend instead.",
+    frontend: "http://localhost:5173",
+    health: "/health",
+    api: "/api",
+  });
 });
 
 app.use("/api", attachUser, apiRouter);

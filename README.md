@@ -124,6 +124,28 @@ docker compose exec backend npm run prisma:seed
 
 Then open **http://localhost:5173**.
 
+### Serving on a public domain with HTTPS
+
+If `DOMAIN` is set in `.env`, a bundled [Caddy](https://caddyserver.com)
+service listens on `:80`/`:443`, auto-provisions a Let's Encrypt certificate
+for that domain, and reverse-proxies `/api/*` to the backend and everything
+else to the frontend — so the app is reachable at `https://your-domain` with
+no CORS configuration needed (frontend and API share one origin).
+
+Requirements: the domain's DNS already points at this host, and ports 80/443
+are reachable from the internet (Let's Encrypt's HTTP-01 challenge needs
+port 80). With those in place:
+
+```bash
+echo "DOMAIN=universum.example.org" >> .env
+docker compose up --build -d
+```
+
+The `backend`/`frontend`/`postgres` container ports are published on
+`127.0.0.1` only (not the public interface) — Caddy is the only service
+exposed externally. For local debugging over SSH: `ssh -L
+4000:localhost:4000 your-host`.
+
 ## Local development (without Docker)
 
 1. Install a local PostgreSQL and create a database + role, e.g.:

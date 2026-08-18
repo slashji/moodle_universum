@@ -11,7 +11,11 @@ function requireEnv(name: string, fallback?: string): string {
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 4000),
-  corsOrigin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  // Comma-separated list, e.g. "http://localhost:5173,https://universum.example.org"
+  corsOrigins: (process.env.CORS_ORIGIN ?? "http://localhost:5173")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
   databaseUrl: requireEnv("DATABASE_URL"),
 
   moodleProvider: (process.env.MOODLE_PROVIDER ?? "mock") as "mock" | "real",
