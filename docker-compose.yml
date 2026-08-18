@@ -36,7 +36,10 @@ services:
       MOODLE_TOKEN: ${MOODLE_TOKEN:-}
       MOODLE_TIMEOUT_MS: 10000
       AUTH_MODE: dev
-      DEV_DEFAULT_ROLE: student
+      # "admin" so the editor UI is available out of the box in this
+      # single-user dev/demo deployment. Only applies to the mock dev user
+      # the first time it's created — see README's "Entering editor mode".
+      DEV_DEFAULT_ROLE: ${DEV_DEFAULT_ROLE:-admin}
     ports:
       # Bound to localhost only — publicly reachable traffic goes through
       # the caddy service instead. Use `ssh -L 4000:localhost:4000 ...` to

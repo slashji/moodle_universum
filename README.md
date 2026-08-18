@@ -216,6 +216,35 @@ testing). This is intentionally swappable — `AuthProvider`
 Moodle SSO / OAuth provider can be dropped in later without touching route
 code. **Do not use dev auth in production.**
 
+### Entering editor mode
+
+The "Editor mode" toggle (top-right, next to the profile chip) only renders
+when `GET /api/me` returns `role: "admin"`. That role is read from the
+`User` row for the mock dev user (id `123`), which is created **once** —
+the first request after the database is empty — with whatever
+`DEV_DEFAULT_ROLE` was at that moment. Changing the env var afterward does
+**not** retroactively update an existing row, so if you don't see the
+toggle:
+
+```bash
+# Docker
+docker compose exec postgres psql -U universum -d moodle_universum \
+  -c 'UPDATE "User" SET role = '\''ADMIN'\'';'
+
+# Local (non-Docker) Postgres
+psql -d moodle_universum -c "UPDATE \"User\" SET role = 'ADMIN';"
+```
+
+Then reload the page — no restart needed. `docker-compose.yml` sets
+`DEV_DEFAULT_ROLE=admin` by default so this only matters if you already ran
+the app once with the old `student` default (or wiped/recreated the `User`
+table and want it to come back as `student`).
+
+Once in editor mode: drag any node to reposition it (auto-saves), click a
+node to reveal delete/edit controls and "Start connecting" (to draw a new
+edge — pick a type, then click a target node), and use "+ Node" in the top
+bar to add a new knowledge node.
+
 ## Mock Moodle mode
 
 `MOODLE_PROVIDER=mock` (the default) uses
