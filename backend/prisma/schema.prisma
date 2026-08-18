@@ -1,0 +1,106 @@
+// Prisma schema for the Universe layout/curriculum database.
+// This database NEVER stores Moodle completion state — only where things
+// live in the universe, how they relate, and which Moodle course (if any)
+// a node maps to. Completion/progress always comes live from Moodle.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+  TEACHER
+}
+
+enum NodeType {
+  DOMAIN
+  COURSE
+  KNOWLEDGE
+  TECHNOLOGY
+}
+
+enum EdgeType {
+  PREREQUISITE
+  RELATED
+  RECOMMENDED_NEXT
+  CONTAINS
+  UNLOCKS
+}
+
+model User {
+  id           String   @id @default(cuid())
+  moodleUserId Int?     @unique
+  email        String?  @unique
+  fullName     String
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Domain {
+  id          String         @id @default(cuid())
+  key         String         @unique
+  name        String
+  color       String
+  description String?
+  centerX     Float          @default(0)
+  centerY     Float          @default(0)
+  nodes       UniverseNode[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model UniverseNode {
+  id          String   @id @default(cuid())
+  type        NodeType
+  name        String
+  description String?
+  domainId    String?
+  domain      Domain?  @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  x           Float
+  y           Float
+  size        Float    @default(1)
+  importance  Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  outgoingEdges UniverseEdge[] @relation("SourceNode")
+  incomingEdges UniverseEdge[] @relation("TargetNode")
+
+  moodleCourseMapping MoodleCourseMapping?
+
+  @@index([domainId])
+  @@index([type])
+}
+
+model UniverseEdge {
+  id           String   @id @default(cuid())
+  sourceNodeId String
+  targetNodeId String
+  source       UniverseNode @relation("SourceNode", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  target       UniverseNode @relation("TargetNode", fields: [targetNodeId], references: [id], onDelete: Cascade)
+  type         EdgeType
+  weight       Float    @default(1)
+  createdAt    DateTime @default(now())
+
+  @@unique([sourceNodeId, targetNodeId, type])
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+}
+
+/// Stable mapping between a universe COURSE node and a Moodle course id.
+/// Kept as its own table (rather than a plain field on UniverseNode) so the
+/// universe/Moodle boundary stays explicit and extensible.
+model MoodleCourseMapping {
+  id             String       @id @default(cuid())
+  moodleCourseId Int          @unique
+  nodeId         String       @unique
+  node           UniverseNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+}
